@@ -1,5 +1,6 @@
+import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import psycopg2
 
@@ -21,15 +22,15 @@ def get_daily_sleep(data):
 
         data = {
             "id": row["id"],
-            "awake_time": row["awake_time"],
-            "deep_sleep_duration": row["deep_sleep_duration"],
-            "efficiency": row["efficiency"],
-            "latency": row["latency"],
-            "light_sleep_duration": row["light_sleep_duration"],
-            "rem_sleep_duration": row["rem_sleep_duration"],
-            "restless_periods": row["restless_periods"],
-            "time_in_bed": row["time_in_bed"],
-            "total_sleep_duration": row["total_sleep_duration"],
+            "awake_time": round(row["awake_time"] / 3600, 2),
+            "deep_sleep_duration": round(row["deep_sleep_duration"] / 3600, 2),
+            "efficiency": round(row["efficiency"] / 3600, 2),
+            "latency": round(row["latency"] / 3600, 2),
+            "light_sleep_duration": round(row["light_sleep_duration"] / 3600, 2),
+            "rem_sleep_duration": round(row["rem_sleep_duration"] / 3600, 2),
+            "restless_periods": round(row["restless_periods"] / 3600, 2),
+            "time_in_bed": round(row["time_in_bed"] / 3600, 2),
+            "total_sleep_duration": round(row["total_sleep_duration"] / 3600, 2),
             "type": row["type"],
             "day": row["day"],
         }
@@ -112,23 +113,15 @@ def get_daily_readiness(data):
 def get_hrv_from_daily_sleep(data):
 
     for row in data["data"]:
-        hrv = row["hrv"]
 
-        data = {
-            "items": hrv["items"],
-            "timestamp": hrv["timestamp"],
-        }
-
-        timestamp = datetime.fromisoformat(data["timestamp"])
-
-        for value in data["items"]:
+        for value in row["hrv"]["items"]:
             if value is not None:
                 try:
                     with db as conn:
                         with conn.cursor() as curs:
                             curs.execute(
-                                "INSERT INTO oura_ring.sleep_hrv (value, timestamp) VALUES (%s, %s)",
-                                (value, timestamp),
+                                "INSERT INTO oura_ring.sleep_hrv (value, day) VALUES (%s, %s)",
+                                (value, row["day"]),
                             )
                 except Exception as e:
                     logging.error(e)
@@ -138,23 +131,15 @@ def get_hrv_from_daily_sleep(data):
 def get_heart_rate_from_daily_sleep(data):
 
     for row in data["data"]:
-        heart_rate = row["heart_rate"]
 
-        data = {
-            "items": heart_rate["items"],
-            "timestamp": heart_rate["timestamp"],
-        }
-
-        timestamp = datetime.fromisoformat(data["timestamp"])
-
-        for value in data["items"]:
+        for value in row["heart_rate"]["items"]:
             if value is not None:
                 try:
                     with db as conn:
                         with conn.cursor() as curs:
                             curs.execute(
-                                "INSERT INTO oura_ring.sleep_heart_rate (value, timestamp) VALUES (%s, %s)",
-                                (value, timestamp),
+                                "INSERT INTO oura_ring.sleep_heart_rate (value, day) VALUES (%s, %s)",
+                                (value, row["day"]),
                             )
                 except Exception as e:
                     logging.error(e)
@@ -240,7 +225,6 @@ def get_daily_activity(data):
             "day": row["day"],
             "score": row["score"],
             "active_calories": row["active_calories"],
-            "target_calories": row["target_calories"],
             "resting_time": row["resting_time"],
             "sedentary_time": row["sedentary_time"],
             "steps": row["steps"],
